@@ -1,35 +1,22 @@
-import React, { useState, useRef,useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Button, Image, StyleSheet } from 'react-native';
-import { Camera } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
-  const [hasPermission, setHasPermission] = useState(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
   const [savedConfirmation, setSavedConfirmation] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
     (async () => {
-      try {
-        const request =
-          Camera.requestCameraPermissionsAsync ||
-          Camera.requestPermissionsAsync;
-        const result = await request();
-        console.log('Camera permission result:', result);
-        const status = result?.status ?? result;
-        const granted = status === 'granted' || status === true;
-        setHasPermission(granted);
-      } catch (err) {
-        console.error('Error requesting camera permission:', err);
-        setHasPermission(false);
-      }
-
+      // Verificar si ya hay una foto guardada
       try {
         const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
         if (savedPhoto) setPhoto(savedPhoto);
       } catch (err) {
-        console.error('Error reading AsyncStorage:', err);
+        console.error('Error leyendo AsyncStorage:', err);
       }
     })();
   }, []);
@@ -44,19 +31,28 @@ export default function App() {
       setTimeout(() => setSavedConfirmation(false), 2000);
     }
   };
- 
-  if (hasPermission === null) return <Text>Solicitando permiso...</Text>;
-  if (hasPermission === false) return <Text>Permiso denegado</Text>;
+
+  if (!permission) {
+    return <Text>Cargando permisos...</Text>;
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>No tienes permiso para usar la cámara.</Text>
+        <Button title="Solicitar permiso" onPress={requestPermission} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
       {!photo ? (
-        <Camera style={{ flex: 1 }} ref={cameraRef} />
+        <CameraView style={{ flex: 1 }} ref={cameraRef} />
       ) : (
         <Image source={{ uri: photo }} style={{ flex: 1 }} />
       )}
 
-      {/* Mensaje / icono de confirmación */}
       {savedConfirmation && (
         <View style={styles.confirmation}>
           <Text style={styles.confirmationText}>✅ Foto guardada</Text>
@@ -64,7 +60,7 @@ export default function App() {
       )}
 
       <Button
-        title={photo ? "Volver a cámara" : "Tomar foto"}
+        title={photo ? 'Volver a cámara' : 'Tomar foto'}
         onPress={() => (photo ? setPhoto(null) : takePicture())}
       />
     </View>
