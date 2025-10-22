@@ -9,17 +9,6 @@ export default function App() {
   const [savedConfirmation, setSavedConfirmation] = useState(false);
   const cameraRef = useRef(null);
 
-  const takePicture = async () => {
-    if (cameraRef.current) {
-      const data = await cameraRef.current.takePictureAsync();
-      setPhoto(data.uri);
-      await AsyncStorage.setItem('ultimaFoto', data.uri);
-
-      setSavedConfirmation(true);
-      setTimeout(() => setSavedConfirmation(false), 2000);
-    }
-  };
-
   useEffect(() => {
     (async () => {
       const { status } = await ExpoCamera.requestCameraPermissionsAsync();
@@ -30,12 +19,22 @@ export default function App() {
     })();
   }, []);
 
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      const data = await cameraRef.current.takePictureAsync();
+      setPhoto(data.uri);
+      await AsyncStorage.setItem('ultimaFoto', data.uri);
+
+      setSavedConfirmation(true);
+      setTimeout(() => setSavedConfirmation(false), 2000);
+    }
+  };
+ 
   if (hasPermission === null) return <Text>Solicitando permiso...</Text>;
   if (hasPermission === false) return <Text>Permiso denegado</Text>;
 
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
+    <View style={{ flex: 1 }}>
       {!photo ? (
         <ExpoCamera.Camera style={{ flex: 1 }} ref={cameraRef} />
       ) : (
@@ -58,12 +57,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   confirmation: {
     position: 'absolute',
     top: 40,
