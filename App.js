@@ -12,6 +12,7 @@ export default function App() {
     if (cameraRef.current) {
       const data = await cameraRef.current.takePictureAsync();
       setPhoto(data.uri);
+      await AsyncStorage.setItem('ultimaFoto', data.uri);
     }
   };
 
