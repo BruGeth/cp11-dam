@@ -3,6 +3,16 @@ import { View, Text, Button, Image, StyleSheet } from 'react-native';
 import { Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+useEffect(() => {
+  (async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    setHasPermission(status === 'granted');
+
+    const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
+    if (savedPhoto) setPhoto(savedPhoto);
+  })();
+}, []);
+
 export default function App() {
   return (
     <View style={styles.container}>
