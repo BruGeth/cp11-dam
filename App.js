@@ -8,6 +8,7 @@ export default function App() {
   const [photo, setPhoto] = useState(null);
   const [savedConfirmation, setSavedConfirmation] = useState(false);
   const cameraRef = useRef(null);
+  const [facing, setFacing] = useState('back'); // 'front' o 'back'
 
   useEffect(() => {
     (async () => {
@@ -38,7 +39,7 @@ export default function App() {
 
   if (!permission.granted) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.centered}>
         <Text>No tienes permiso para usar la cámara.</Text>
         <TouchableOpacity style={styles.bigButton} onPress={requestPermission}>
           <Text style={styles.buttonText}>Solicitar permiso</Text>
@@ -47,10 +48,14 @@ export default function App() {
     );
   }
 
+  const toggleCameraType = () => {
+    setFacing((prev) => (prev === 'back' ? 'front' : 'back'));
+  };
+
   return (
     <View style={{ flex: 1 }}>
       {!photo ? (
-        <CameraView style={{ flex: 1 }} ref={cameraRef} />
+        <CameraView style={{ flex: 1 }} ref={cameraRef} facing={facing} />
       ) : (
         <Image source={{ uri: photo }} style={{ flex: 1 }} />
       )}
@@ -62,6 +67,10 @@ export default function App() {
       )}
 
       <View style={styles.footer}>
+        <TouchableOpacity style={styles.toggleButton} onPress={toggleCameraType}>
+          <Text style={styles.buttonText}>Cambiar cámara</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.bigButton}
           onPress={() => (photo ? setPhoto(null) : takePicture())}
@@ -91,6 +100,7 @@ const styles = StyleSheet.create({
   footer: {
     padding: 16,
     backgroundColor: 'black',
+    bottom: 30,
   },
   bigButton: {
     backgroundColor: 'white',
@@ -100,10 +110,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     minWidth: 200,
+    marginTop: 8,
+  },
+  toggleButton: {
+    backgroundColor: 'white',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    alignSelf: 'center',
+    minWidth: 160,
   },
   buttonText: {
     color: 'black',
     fontSize: 18,
     fontWeight: '600',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
