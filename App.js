@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Button, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -40,7 +40,9 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>No tienes permiso para usar la cámara.</Text>
-        <Button title="Solicitar permiso" onPress={requestPermission} />
+        <TouchableOpacity style={styles.bigButton} onPress={requestPermission}>
+          <Text style={styles.buttonText}>Solicitar permiso</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -59,10 +61,14 @@ export default function App() {
         </View>
       )}
 
-      <Button
-        title={photo ? 'Volver a cámara' : 'Tomar foto'}
-        onPress={() => (photo ? setPhoto(null) : takePicture())}
-      />
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.bigButton}
+          onPress={() => (photo ? setPhoto(null) : takePicture())}
+        >
+          <Text style={styles.buttonText}>{photo ? 'Volver a cámara' : 'Tomar foto'}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -81,5 +87,23 @@ const styles = StyleSheet.create({
   confirmationText: {
     color: '#fff',
     fontSize: 16,
+  },
+  footer: {
+    padding: 16,
+    backgroundColor: 'black',
+  },
+  bigButton: {
+    backgroundColor: 'white',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    alignSelf: 'center',
+    minWidth: 200,
+  },
+  buttonText: {
+    color: 'black',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
