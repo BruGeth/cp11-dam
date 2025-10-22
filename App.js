@@ -6,6 +6,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function App() {
   const [hasPermission, setHasPermission] = useState(null);
   const [photo, setPhoto] = useState(null);
+  const cameraRef = useRef(null);
+
+  const takePicture = async () => {
+    if (cameraRef.current) {
+      const data = await cameraRef.current.takePictureAsync();
+      setPhoto(data.uri);
+    }
+  };
 
   useEffect(() => {
     (async () => {
