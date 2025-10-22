@@ -1,6 +1,6 @@
 import React, { useState, useRef,useEffect } from 'react';
 import { View, Text, Button, Image, StyleSheet } from 'react-native';
-import * as ExpoCamera from 'expo-camera';
+import { Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
@@ -11,11 +11,26 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await ExpoCamera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
+      try {
+        const request =
+          Camera.requestCameraPermissionsAsync ||
+          Camera.requestPermissionsAsync;
+        const result = await request();
+        console.log('Camera permission result:', result);
+        const status = result?.status ?? result;
+        const granted = status === 'granted' || status === true;
+        setHasPermission(granted);
+      } catch (err) {
+        console.error('Error requesting camera permission:', err);
+        setHasPermission(false);
+      }
 
-      const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
-      if (savedPhoto) setPhoto(savedPhoto);
+      try {
+        const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
+        if (savedPhoto) setPhoto(savedPhoto);
+      } catch (err) {
+        console.error('Error reading AsyncStorage:', err);
+      }
     })();
   }, []);
 
@@ -36,7 +51,7 @@ export default function App() {
   return (
     <View style={{ flex: 1 }}>
       {!photo ? (
-        <ExpoCamera.Camera style={{ flex: 1 }} ref={cameraRef} />
+        <Camera style={{ flex: 1 }} ref={cameraRef} />
       ) : (
         <Image source={{ uri: photo }} style={{ flex: 1 }} />
       )}
