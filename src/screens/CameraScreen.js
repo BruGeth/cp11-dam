@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Modal } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
 import { loadHistory, saveHistory, saveCompat } from '../storage/historyStorage';
@@ -15,6 +15,11 @@ export default function CameraScreen() {
 
   const [facing, setFacing] = useState('back');
   const [flash, setFlash] = useState('off');
+
+  // nuevo: estados para modal de previsualización
+  const [captured, setCaptured] = useState(null); // uri temporal de la captura
+  const [capturedDate, setCapturedDate] = useState(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -35,17 +40,38 @@ export default function CameraScreen() {
     }
   };
 
+  // ahora la toma sólo captura y abre el modal de preview
   const takePicture = async () => {
-    if (cameraRef.current) {
-      const data = await cameraRef.current.takePictureAsync();
-      const now = new Date().toLocaleString();
-      setPhoto(data.uri);
-      setPhotoDate(now);
-      await saveToHistory(data.uri, now);
-
-      setSavedConfirmation(true);
-      setTimeout(() => setSavedConfirmation(false), 2000);
+    try {
+      if (cameraRef.current) {
+        const data = await cameraRef.current.takePictureAsync();
+        const now = new Date().toLocaleString();
+        setCaptured(data.uri);
+        setCapturedDate(now);
+        setPreviewVisible(true);
+      }
+    } catch (err) {
+      console.error('takePicture error:', err);
     }
+  };
+
+  const handleSaveCaptured = async () => {
+    if (!captured) return;
+    await saveToHistory(captured, capturedDate);
+    setPhoto(captured);
+    setPhotoDate(capturedDate);
+    setPreviewVisible(false);
+    setCaptured(null);
+    setCapturedDate(null);
+
+    setSavedConfirmation(true);
+    setTimeout(() => setSavedConfirmation(false), 2000);
+  };
+
+  const handleDiscardCaptured = () => {
+    setPreviewVisible(false);
+    setCaptured(null);
+    setCapturedDate(null);
   };
 
   const toggleCameraType = () => setFacing((p) => (p === 'back' ? 'front' : 'back'));
@@ -65,6 +91,23 @@ export default function CameraScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'black' }}>
+      {/* Modal de previsualización antes de guardar */}
+      <Modal visible={previewVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {captured && <Image source={{ uri: captured }} style={styles.modalImage} />}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSaveCaptured}>
+                <Text style={styles.modalButtonText}>Guardar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.discardButton]} onPress={handleDiscardCaptured}>
+                <Text style={styles.modalButtonText}>Descartar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {!photo ? (
         <>
           <CameraView style={{ flex: 1 }} ref={cameraRef} facing={facing} flash={flash} />
@@ -126,4 +169,14 @@ const styles = StyleSheet.create({
   buttonText: { color: 'black', fontSize: 18, fontWeight: '600' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   photoDate: { position: 'absolute', bottom: 90, left: 20, color: 'white', fontSize: 16, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+
+  /* estilos modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '90%', height: '80%', borderRadius: 12, overflow: 'hidden', backgroundColor: '#000' },
+  modalImage: { width: '100%', height: '85%', resizeMode: 'cover' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, backgroundColor: '#111' },
+  modalButton: { flex: 1, paddingVertical: 12, marginHorizontal: 6, borderRadius: 8, alignItems: 'center' },
+  saveButton: { backgroundColor: '#4caf50' },
+  discardButton: { backgroundColor: '#b00020' },
+  modalButtonText: { color: 'white', fontWeight: '600' },
 });
