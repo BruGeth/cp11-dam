@@ -3,17 +3,23 @@ import { View, Text, Button, Image, StyleSheet } from 'react-native';
 import { Camera } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-useEffect(() => {
-  (async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-
-    const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
-    if (savedPhoto) setPhoto(savedPhoto);
-  })();
-}, []);
-
 export default function App() {
+  const [hasPermission, setHasPermission] = useState(null);
+  const [photo, setPhoto] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+
+      const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
+      if (savedPhoto) setPhoto(savedPhoto);
+    })();
+  }, []);
+
+  if (hasPermission === null) return <Text>Solicitando permiso...</Text>;
+  if (hasPermission === false) return <Text>Permiso denegado</Text>;
+
   return (
     <View style={styles.container}>
       <Text>Open up App.js to start working on your app!</Text>
