@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, FlatList } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ export default function App() {
   const [photo, setPhoto] = useState(null);
   const [savedConfirmation, setSavedConfirmation] = useState(false);
   const [photoDate, setPhotoDate] = useState(null);
-  const [lastPhoto, setLastPhoto] = useState(null);
+  const [history, setHistory] = useState([]); // array of { uri, date }
   const cameraRef = useRef(null);
 
   const [facing, setFacing] = useState('back'); // 'front' | 'back'
@@ -17,20 +17,44 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      // Verificar si ya hay una foto guardada
+      // Verificar historial guardado
       try {
-        const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
-        const savedDate = await AsyncStorage.getItem('fechaFoto');
-        if (savedPhoto) {
-          setPhoto(savedPhoto);
-          setLastPhoto(savedPhoto);
+        const historialRaw = await AsyncStorage.getItem('historialFotos');
+        if (historialRaw) {
+          const parsed = JSON.parse(historialRaw);
+          setHistory(Array.isArray(parsed) ? parsed : []);
+          if (parsed && parsed.length > 0) {
+            // opcional: mostrar la última miniatura como preview en footer (no abre la vista completa)
+          }
+        } else {
+          // compatibilidad con keys antiguas
+          const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
+          const savedDate = await AsyncStorage.getItem('fechaFoto');
+          if (savedPhoto) {
+            const arr = [{ uri: savedPhoto, date: savedDate || new Date().toLocaleString() }];
+            setHistory(arr);
+            await AsyncStorage.setItem('historialFotos', JSON.stringify(arr));
+          }
         }
-        if (savedDate) setPhotoDate(savedDate);
       } catch (err) {
         console.error('Error leyendo AsyncStorage:', err);
       }
     })();
   }, []);
+
+  const saveToHistory = async (uri, date) => {
+    try {
+      const newEntry = { uri, date };
+      const newHistory = [newEntry, ...history].slice(0, 3); // mantener solo últimas 3
+      setHistory(newHistory);
+      await AsyncStorage.setItem('historialFotos', JSON.stringify(newHistory));
+      // Mantener compatibilidad con keys antiguas si se usan
+      await AsyncStorage.setItem('ultimaFoto', uri);
+      await AsyncStorage.setItem('fechaFoto', date);
+    } catch (err) {
+      console.error('Error guardando historial:', err);
+    }
+  };
 
   const takePicture = async () => {
     if (cameraRef.current) {
@@ -38,9 +62,7 @@ export default function App() {
       const now = new Date().toLocaleString();
       setPhoto(data.uri);
       setPhotoDate(now);
-      setLastPhoto(data.uri);
-      await AsyncStorage.setItem('ultimaFoto', data.uri);
-      await AsyncStorage.setItem('fechaFoto', now);
+      await saveToHistory(data.uri, now);
 
       setSavedConfirmation(true);
       setTimeout(() => setSavedConfirmation(false), 2000);
@@ -68,11 +90,23 @@ export default function App() {
     );
   }
 
+  const renderHistoryItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.historyItem}
+      onPress={() => {
+        setPhoto(item.uri);
+        setPhotoDate(item.date);
+      }}
+    >
+      <Image source={{ uri: item.uri }} style={styles.historyImage} />
+    </TouchableOpacity>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: 'black' }}>
       {!photo ? (
         <>
-          {/* 📷 Cámara */}
+          {/* Cámara */}
           <CameraView
             style={{ flex: 1 }}
             ref={cameraRef}
@@ -80,10 +114,9 @@ export default function App() {
             flash={flash}
           />
 
-          {/* 🔦 Navbar superior */}
+          {/* Navbar superior */}
           <View style={styles.navbar}>
             <TouchableOpacity style={styles.navButton} onPress={toggleFlash}>
-              {/* Reemplazado emoji por ícono */}
               <MaterialIcons
                 name={flash === 'off' ? 'flash-off' : 'flash-on'}
                 size={24}
@@ -92,35 +125,24 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* 📸 Footer con 3 secciones */}
+          {/* Footer con 3 secciones */}
           <View style={styles.footer}>
-            {/* Miniatura última foto */}
-            <TouchableOpacity
-              style={styles.thumbnailContainer}
-              onPress={async () => {
-                const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
-                if (savedPhoto) {
-                  setPhoto(savedPhoto);
-                  const savedDate = await AsyncStorage.getItem('fechaFoto');
-                  setPhotoDate(savedDate);
-                }
-              }}
-            >
-              {lastPhoto ? (
-                <Image source={{ uri: lastPhoto }} style={styles.thumbnail} />
-              ) : (
-                <View style={styles.thumbnailPlaceholder}>
-                  <Text style={styles.thumbnailText}>📷</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            {/* Historial (FlatList horizontal) */}
+            <View style={styles.historyContainer}>
+              <FlatList
+                data={history}
+                horizontal
+                keyExtractor={(_, idx) => String(idx)}
+                renderItem={renderHistoryItem}
+                showsHorizontalScrollIndicator={false}
+              />
+            </View>
 
             {/* Botón disparador */}
             <TouchableOpacity style={styles.shutterButton} onPress={takePicture} />
 
             {/* Botón cambiar cámara */}
             <TouchableOpacity style={styles.toggleButton} onPress={toggleCameraType}>
-              {/* Reemplazado emoji por ícono que refleja la cámara actual */}
               <MaterialIcons
                 name={facing === 'back' ? 'camera-rear' : 'camera-front'}
                 size={30}
@@ -185,7 +207,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
+  },
+  historyContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+  },
+  historyItem: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#333',
+    marginRight: 8,
+  },
+  historyImage: {
+    width: '100%',
+    height: '100%',
   },
   thumbnailContainer: {
     width: 60,
