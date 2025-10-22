@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -82,9 +83,12 @@ export default function App() {
           {/* 🔦 Navbar superior */}
           <View style={styles.navbar}>
             <TouchableOpacity style={styles.navButton} onPress={toggleFlash}>
-              <Text style={styles.navButtonText}>
-                {flash === 'off' ? '⚡ Flash OFF' : '💡 Flash ON'}
-              </Text>
+              {/* Reemplazado emoji por ícono */}
+              <MaterialIcons
+                name={flash === 'off' ? 'flash-off' : 'flash-on'}
+                size={24}
+                color="white"
+              />
             </TouchableOpacity>
           </View>
 
@@ -116,7 +120,12 @@ export default function App() {
 
             {/* Botón cambiar cámara */}
             <TouchableOpacity style={styles.toggleButton} onPress={toggleCameraType}>
-              <Text style={styles.toggleText}>🔄</Text>
+              {/* Reemplazado emoji por ícono que refleja la cámara actual */}
+              <MaterialIcons
+                name={facing === 'back' ? 'camera-rear' : 'camera-front'}
+                size={30}
+                color="white"
+              />
             </TouchableOpacity>
           </View>
         </>
