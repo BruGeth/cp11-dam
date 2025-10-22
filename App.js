@@ -8,6 +8,7 @@ export default function App() {
   const [photo, setPhoto] = useState(null);
   const [savedConfirmation, setSavedConfirmation] = useState(false);
   const [photoDate, setPhotoDate] = useState(null);
+  const [lastPhoto, setLastPhoto] = useState(null);
   const cameraRef = useRef(null);
 
   const [facing, setFacing] = useState('back'); // 'front' | 'back'
@@ -19,7 +20,10 @@ export default function App() {
       try {
         const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
         const savedDate = await AsyncStorage.getItem('fechaFoto');
-        if (savedPhoto) setPhoto(savedPhoto);
+        if (savedPhoto) {
+          setPhoto(savedPhoto);
+          setLastPhoto(savedPhoto);
+        }
         if (savedDate) setPhotoDate(savedDate);
       } catch (err) {
         console.error('Error leyendo AsyncStorage:', err);
@@ -33,6 +37,7 @@ export default function App() {
       const now = new Date().toLocaleString();
       setPhoto(data.uri);
       setPhotoDate(now);
+      setLastPhoto(data.uri);
       await AsyncStorage.setItem('ultimaFoto', data.uri);
       await AsyncStorage.setItem('fechaFoto', now);
 
@@ -66,7 +71,7 @@ export default function App() {
     <View style={{ flex: 1, backgroundColor: 'black' }}>
       {!photo ? (
         <>
-          {/* Cámara */}
+          {/* 📷 Cámara */}
           <CameraView
             style={{ flex: 1 }}
             ref={cameraRef}
@@ -74,25 +79,45 @@ export default function App() {
             flash={flash}
           />
 
-          {/* Navbar superior */}
+          {/* 🔦 Navbar superior */}
           <View style={styles.navbar}>
             <TouchableOpacity style={styles.navButton} onPress={toggleFlash}>
               <Text style={styles.navButtonText}>
-                {flash === 'off' ? '⚡️ Flash OFF' : '💡 Flash ON'}
+                {flash === 'off' ? '⚡ Flash OFF' : '💡 Flash ON'}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.navButton} onPress={toggleCameraType}>
-              <Text style={styles.navButtonText}>🔄 Cambiar cámara</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Botón de disparo (parte inferior) */}
-          <View style={styles.shutterContainer}>
+          {/* 📸 Footer con 3 secciones */}
+          <View style={styles.footer}>
+            {/* Miniatura última foto */}
             <TouchableOpacity
-              style={styles.shutterButton}
-              onPress={takePicture}
-            />
+              style={styles.thumbnailContainer}
+              onPress={async () => {
+                const savedPhoto = await AsyncStorage.getItem('ultimaFoto');
+                if (savedPhoto) {
+                  setPhoto(savedPhoto);
+                  const savedDate = await AsyncStorage.getItem('fechaFoto');
+                  setPhotoDate(savedDate);
+                }
+              }}
+            >
+              {lastPhoto ? (
+                <Image source={{ uri: lastPhoto }} style={styles.thumbnail} />
+              ) : (
+                <View style={styles.thumbnailPlaceholder}>
+                  <Text style={styles.thumbnailText}>📷</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Botón disparador */}
+            <TouchableOpacity style={styles.shutterButton} onPress={takePicture} />
+
+            {/* Botón cambiar cámara */}
+            <TouchableOpacity style={styles.toggleButton} onPress={toggleCameraType}>
+              <Text style={styles.toggleText}>🔄</Text>
+            </TouchableOpacity>
           </View>
         </>
       ) : (
@@ -108,7 +133,7 @@ export default function App() {
             </View>
           )}
 
-          <View style={styles.footer}>
+          <View style={styles.footerPreview}>
             <TouchableOpacity
               style={styles.bigButton}
               onPress={() => setPhoto(null)}
@@ -128,8 +153,8 @@ const styles = StyleSheet.create({
     top: 40,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
     paddingHorizontal: 20,
     zIndex: 10,
   },
@@ -143,10 +168,35 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
-  shutterContainer: {
+  footer: {
     position: 'absolute',
-    bottom: 40,
-    alignSelf: 'center',
+    bottom: 25,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  thumbnailContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#333',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbnailText: {
+    fontSize: 24,
+    color: 'white',
   },
   shutterButton: {
     width: 80,
@@ -155,6 +205,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderWidth: 4,
     borderColor: '#999',
+  },
+  toggleButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleText: {
+    fontSize: 30,
+    color: 'white',
   },
   confirmation: {
     position: 'absolute',
@@ -170,7 +232,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
-  footer: {
+  footerPreview: {
     padding: 16,
     backgroundColor: 'black',
   },
